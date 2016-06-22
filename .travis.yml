@@ -1,0 +1,10 @@
+language: php
+php:
+  - 5.3
+  - 5.4
+
+notifications:
+  email:
+    - kill-bill-commits@googlegroups.com
+
+script: phpunit --coverage-text test
