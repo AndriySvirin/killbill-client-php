@@ -100,10 +100,6 @@ class Killbill_Client {
       curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
     }
 
-    curl_setopt($ch, CURLOPT_VERBOSE, 1);
-    $fp = fopen('/tmp/ch.txt', 'w');
-    curl_setopt($ch, CURLOPT_STDERR, $fp);
-
     // Send the request
     $response = curl_exec($ch);
 

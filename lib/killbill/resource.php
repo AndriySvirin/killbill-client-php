@@ -18,20 +18,7 @@
 
 abstract class Killbill_Resource /* implements JsonSerializable */ {
 
-  const CONTENT_TYPE_JSON = 'json';
-  const CONTENT_TYPE_XML = 'xml';
-
   protected $_client;
-
-  /**
-   * @var string
-   */
-  public $contentType = 'json';
-
-  /**
-   * @var \DOMDocument
-   */
-  public $xmlDOM = null;
 
   /**
    * Issue a GET request to killbill
@@ -52,17 +39,19 @@ abstract class Killbill_Resource /* implements JsonSerializable */ {
    * @param  $user user requesting the creation
    * @param  $reason reason for the creation
    * @param  $comment any addition comment
+   * @param  $headers
+   * @param  $xml
    * @return a response object
    */
-  protected function _create($uri, $user, $reason, $comment, $headers = null) {
+  protected function _create($uri, $user, $reason, $comment, $headers = null, \DOMDocument $xml = null) {
     $this->initClientIfNeeded();
 
-    if ($this->contentType == self::CONTENT_TYPE_JSON) {
+    if ($xml == null) {
       $data = $this->jsonSerialize($this);
       $contentType = 'application/json; charset=utf-8';
     }
-    elseif ($this->contentType == self::CONTENT_TYPE_XML) {
-      $data = $this->xmlDOM->saveXML();
+    else {
+      $data = $xml->saveXML();
       $contentType = 'application/xml; charset=utf-8';
     }
     return $this->_client->request(Killbill_Client::POST, $uri, $data, $user, $reason, $comment, $headers, $contentType);

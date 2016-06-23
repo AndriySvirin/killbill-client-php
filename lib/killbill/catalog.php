@@ -42,9 +42,8 @@ class Killbill_Catalog extends Killbill_CatalogAttributesSimple {
     return $baseProducts;
   }
 
-  public function setFullCatalog($user, $reason, $comment, $headers = null) {
-    $this->contentType = self::CONTENT_TYPE_XML;
-    $response = $this->_create(Killbill_Client::PATH_CATALOG, $user, $reason, $comment, $headers);
+  public function setFullCatalog(\DOMDocument $xml, $user, $reason, $comment, $headers = null) {
+    $response = $this->_create(Killbill_Client::PATH_CATALOG, $user, $reason, $comment, $headers, $xml);
     return $response;
   }
 
