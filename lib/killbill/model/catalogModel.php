@@ -5,8 +5,17 @@
  */
 class Killbill_CatalogModel {
 
+  /**
+   * Recurring billing
+   */
   const RECURRING_BILLING_MODE_IN_ADVANCE = 'IN_ADVANCE';
   const RECURRING_BILLING_MODE_IN_ARREAR = 'IN_ARREAR';
+
+  /**
+   * Currency
+   */
+  const CURRENCY_USD = 'USD';
+  const CURRENCY_EUR = 'EUR';
 
   /**
    * @var string
@@ -32,6 +41,11 @@ class Killbill_CatalogModel {
    * @var Killbill_CatalogModel_Currency[]
    */
   public $currencies = array();
+
+  /**
+   * @var Killbill_CatalogModel_Unit[]
+   */
+  public $units = array();
 
   /**
    * @var Killbill_CatalogModel_Product[]
@@ -71,6 +85,16 @@ class Killbill_CatalogModel {
     $catalog->appendChild($currencies);
     foreach ($this->currencies as $currencyModel) {
       $currencies->appendChild($dom->createElement('currency', $currencyModel->currency));
+    }
+
+    if (!empty($this->units)) {
+      $units = $dom->createElement('units');
+      $catalog->appendChild($units);
+      foreach ($this->units as $unit) {
+        $unitsUnit = $dom->createElement('unit');
+        $units->appendChild($unitsUnit);
+        $unitsUnit->setAttribute('name', $unit->getId());
+      }
     }
 
     $products = $dom->createElement('products');
@@ -123,11 +147,61 @@ class Killbill_CatalogModel {
         $planFinalPhaseRecurringPrice = $dom->createElement('recurringPrice');
         $planFinalPhaseRecurring->appendChild($planFinalPhaseRecurringPrice);
 
-        $planFinalPhaseRecurringPricePrice = $dom->createElement('price');
-        $planFinalPhaseRecurringPrice->appendChild($planFinalPhaseRecurringPricePrice);
+        foreach ($planModel->finalPhase->recurring->recurringPrice as $recurringPrice) {
+          $planFinalPhaseRecurringPricePrice = $dom->createElement('price');
+          $planFinalPhaseRecurringPrice->appendChild($planFinalPhaseRecurringPricePrice);
 
-        $planFinalPhaseRecurringPricePrice->appendChild($dom->createElement('currency', $planModel->finalPhase->recurring->recurringPrice->currency));
-        $planFinalPhaseRecurringPricePrice->appendChild($dom->createElement('value', $planModel->finalPhase->recurring->recurringPrice->value));
+          $planFinalPhaseRecurringPricePrice->appendChild($dom->createElement('currency', $recurringPrice->currency));
+          $planFinalPhaseRecurringPricePrice->appendChild($dom->createElement('value', $recurringPrice->value));
+        }
+      }
+
+      if ($planModel->finalPhase->usages !== null) {
+        $planFinalPhaseUsages = $dom->createElement('usages');
+        $planFinalPhase->appendChild($planFinalPhaseUsages);
+
+        foreach ($planModel->finalPhase->usages as $usage) {
+          $planFinalPhaseUsagesUsage = $dom->createElement('usage');
+          $planFinalPhaseUsages->appendChild($planFinalPhaseUsagesUsage);
+          $planFinalPhaseUsagesUsage->setAttribute('name', $usage->getId());
+          $planFinalPhaseUsagesUsage->setAttribute('billingMode', $usage->billingMode);
+          $planFinalPhaseUsagesUsage->setAttribute('usageType', $usage->usageType);
+
+          if (!empty($usage->billingPeriod)) {
+            $planFinalPhaseUsagesUsage->appendChild($dom->createElement('billingPeriod', $usage->billingPeriod));
+          }
+
+          if (!empty($usage->limits)) {
+            $planFinalPhaseUsagesUsageLimits = $dom->createElement('limits');
+            $planFinalPhaseUsagesUsage->appendChild($planFinalPhaseUsagesUsageLimits);
+
+            foreach ($usage->limits as $limit) {
+              $planFinalPhaseUsagesUsageLimitsLimit = $dom->createElement('limit');
+              $planFinalPhaseUsagesUsageLimits->appendChild($planFinalPhaseUsagesUsageLimitsLimit);
+
+              $planFinalPhaseUsagesUsageLimitsLimit->appendChild($dom->createElement('unit', $limit->unit->getId()));
+              if (!empty($limit->min)) {
+                $planFinalPhaseUsagesUsageLimitsLimit->appendChild($dom->createElement('min', $limit->min));
+              }
+              if (!empty($limit->max)) {
+                $planFinalPhaseUsagesUsageLimitsLimit->appendChild($dom->createElement('max', $limit->max));
+              }
+            }
+          }
+
+          if (!empty($usage->recurringPrice)) {
+            $planFinalPhaseUsagesUsageRecurringPrice = $dom->createElement('recurringPrice');
+            $planFinalPhaseUsagesUsage->appendChild($planFinalPhaseUsagesUsageRecurringPrice);
+
+            foreach ($usage->recurringPrice as $recurringPrice) {
+              $planFinalPhaseUsagesUsageRecurringPricePrice = $dom->createElement('price');
+              $planFinalPhaseUsagesUsageRecurringPrice->appendChild($planFinalPhaseUsagesUsageRecurringPricePrice);
+
+              $planFinalPhaseUsagesUsageRecurringPricePrice->appendChild($dom->createElement('currency', $recurringPrice->currency));
+              $planFinalPhaseUsagesUsageRecurringPricePrice->appendChild($dom->createElement('value', $recurringPrice->value));
+            }
+          }
+        }
       }
     }
 
@@ -190,6 +264,34 @@ class Killbill_CatalogModel_Currency {
 }
 
 /**
+ * Model class unit
+ */
+class Killbill_CatalogModel_Unit {
+
+  /**
+   * @var string 
+   */
+  public $name;
+
+  /**
+   * Constructor.
+   * @param string $name
+   */
+  public function __construct($name) {
+    $this->name = $name;
+  }
+
+  /**
+   * Get ID.
+   * @return string
+   */
+  public function getId() {
+    return Killbill_CatalogModel_Helpers::strToId($this->name);
+  }
+
+}
+
+/**
  * Model class product
  */
 class Killbill_CatalogModel_Product {
@@ -211,6 +313,7 @@ class Killbill_CatalogModel_Product {
   /**
    * Constructor.
    * @param string $name
+   * @param string $productCategory
    */
   public function __construct($name, $productCategory = null) {
     $this->name = $name;
@@ -231,9 +334,10 @@ class Killbill_CatalogModel_Product {
  * Model class rule
  */
 class Killbill_CatalogModel_Rule {
-        }
 
-        /**
+}
+
+/**
  * Model class plan
  */
 class Killbill_CatalogModel_Plan {
@@ -298,12 +402,18 @@ class Killbill_CatalogModel_PlanPhase {
   public $recurring = null;
 
   /**
+   * @var Killbill_CatalogModel_PlanPhase_Usage[]
+   */
+  public $usages = null;
+
+  /**
    * Constructor
    */
-  public function __construct($type, Killbill_CatalogModel_PlanPhase_Duration $duration, Killbill_CatalogModel_PlanPhase_Recurring $recurring = null) {
+  public function __construct($type, Killbill_CatalogModel_PlanPhase_Duration $duration, Killbill_CatalogModel_PlanPhase_Recurring $recurring = null, array $usages = null) {
     $this->type = $type;
     $this->duration = $duration;
     $this->recurring = $recurring;
+    $this->usages = $usages;
   }
 
 }
@@ -356,16 +466,107 @@ class Killbill_CatalogModel_PlanPhase_Recurring {
   public $billingPeriod;
 
   /**
-   * @var Killbill_CatalogModel_Price
+   * @var Killbill_CatalogModel_Price[]
    */
   public $recurringPrice;
 
   /**
    * Constructor
    */
-  public function __construct($billingPeriod, Killbill_CatalogModel_Price $recurringPrice) {
+  public function __construct($billingPeriod, array $recurringPrice) {
     $this->billingPeriod = $billingPeriod;
     $this->recurringPrice = $recurringPrice;
+  }
+
+}
+
+/**
+ * Model class planPhase usage
+ */
+class Killbill_CatalogModel_PlanPhase_Usage {
+
+  const USAGE_TYPE_CAPACITY = 'CAPACITY';
+  const USAGE_TYPE_CONSUMABLE = 'CONSUMABLE';
+
+  /**
+   * @var string 
+   */
+  public $name;
+
+  /**
+   * @var string 
+   */
+  public $billingMode;
+
+  /**
+   * @var string
+   */
+  public $usageType;
+
+  /**
+   * @var string
+   */
+  public $billingPeriod = null;
+
+  /**
+   * @var Killbill_CatalogModel_Limit[]
+   */
+  public $limits = null;
+
+  /**
+   * @var Killbill_CatalogModel_Price[]
+   */
+  public $recurringPrice = null;
+
+  /**
+   * Constructor
+   */
+  public function __construct($name, $billingMode, $usageType, $billingPeriod = null, array $limits = null, array $recurringPrice = null) {
+    $this->name = $name;
+    $this->billingMode = $billingMode;
+    $this->usageType = $usageType;
+    $this->billingPeriod = $billingPeriod;
+    $this->limits = $limits;
+    $this->recurringPrice = $recurringPrice;
+  }
+
+  /**
+   * Get ID.
+   * @return string
+   */
+  public function getId() {
+    return Killbill_CatalogModel_Helpers::strToId($this->name);
+  }
+
+}
+
+/**
+ * Model class limit
+ */
+class Killbill_CatalogModel_Limit {
+
+  /**
+   * @var Killbill_CatalogModel_Unit
+   */
+  public $unit;
+
+  /**
+   * @var integer
+   */
+  public $min = null;
+
+  /**
+   * @var integer
+   */
+  public $max = null;
+
+  /**
+   * Constructor
+   */
+  public function __construct(Killbill_CatalogModel_Unit $unit, $min = null, $max = null) {
+    $this->unit = $unit;
+    $this->min = $min;
+    $this->max = $max;
   }
 
 }
@@ -441,9 +642,6 @@ class Killbill_CatalogModel_PriceList {
  * Helpers.
  */
 class Killbill_CatalogModel_Helpers {
-
-  const CURRENCY_USD = 'USD';
-  const CURRENCY_EUR = 'EUR';
 
   public static function strToId($str) {
     return strtolower(str_replace(' ', '_', preg_replace("/[^A-Za-z0-9 ]/", '', $str)));
